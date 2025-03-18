@@ -1,3 +1,4 @@
 colorama
 winreg
 winshell
+pywin32
